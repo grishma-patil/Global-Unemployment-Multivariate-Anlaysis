@@ -1,0 +1,333 @@
+---
+title: "Global_Unemployment"
+author: "gp549@newark.rutgers.edu"
+date: "2024-04-28"
+output: html_document
+---
+'
+## Loading the Dataset
+
+```{r}
+library(readr)
+library(MVA)
+library(HSAUR2)
+library(SciViews)
+library(scatterplot3d)
+library(car)
+library(lattice)
+library(GGally)
+library(ggplot2)
+library(ggridges)
+library(ggvis)
+library(ggthemes)
+library(cowplot)
+library(gapminder)
+library(gganimate)
+library(dplyr)
+library(tidyverse)
+library(grid)
+library(gridExtra)
+library(RColorBrewer)
+library(Hotelling)
+library(stats)
+library(biotools)
+library(factoextra)
+library(FactoMineR)
+library(ggfortify)
+library(psych)
+library(corrplot)
+library(devtools)
+library(cluster)
+library(magrittr)
+library(NbClust)
+library(MASS)
+library(gvlma)
+library(leaps)
+library(relaimpo)
+library(e1071)
+library(pROC)
+library(memisc)
+library(ROCR)
+library(klaR)
+library(caret)
+library(caTools)
+
+data <- read_csv("C:/Users/mumba/Documents/Global_Unemployment__Dataset.csv")
+data
+
+attach(data)
+
+```
+
+* The dataset is obtained from Kaggle: 
+* It has 10 Countries, with Male and Female Gender, with various age group and age categories, and 3 years 2022,2023,2024 as 7 columns.
+
+Country Name: The name of the country where the data is collected.
+Sex (Gender): The gender of individuals, categorized as male or female.
+Age Group: The grouping of individuals based on their age, such as under 15 years, 15-24 years, and 55+ years.
+Age Category: The broader categorization of age groups, such as children (15 years),youth (15-24 years), and adult (55+ years).
+year_2014 to year_2024: The population data for each year from 2014 to 2024.
+
+
+## QUESTIONS
+
+####1.	Can individuals be classified into different countries based on their demographic characteristics such as sex, age group, and population distribution?
+
+####2.	Can we predict whether an individual belongs to a high-risk category based on their demographic information and population distribution?
+
+
+## Analysing the Data
+
+```{r}
+str(data)
+```
+### Data Dictionary
+
+### Correlation Test
+
+```{r}
+
+# Identify numeric columns
+numeric_cols <- sapply(data, is.numeric)
+
+# Subset data to include only numeric columns
+numeric_data <- data[, numeric_cols]
+
+# Calculate correlation matrix
+cor <- cor(numeric_data)
+
+# Plot correlation matrix
+corrplot(cor, type = "upper", method = "color")
+```
+* The correlation matrix shows us that there is correlation between the columns.
+* Hence, Principal Component Analysis (PCA) can be used to reduce the number of columns for the analysis.
+
+## Principal Component Analysis (PCA)
+
+###PCA
+
+```{r}
+
+# Perform PCA
+data_pca <- prcomp(cor, scale. = TRUE)
+summary(data_pca)
+
+```
+PCA gives the same number of principal components as the number of columns, which, in our analysis, is 12. The principal components that we obtained are as follows:
+
+### Scree diagram
+
+```{r}
+fviz_eig(data_pca, addlabels = TRUE)
+
+fviz_pca_var(data_pca,col.var = "cos2",
+             gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"),
+             repel = TRUE)
+
+```
+The scree plot determines how many Principal Components (PCs) to use for the analysis. 
+• The significant bend in the plot is used to determine the number of PCs to be used. 
+• The plot shows us the number of components to be considered is 2. (93.1% of variance)
+
+The distance between points in a biplot reflects the generalized distance between them.  The length of the vector reflects the variance of the variable.  Correlation of the variables reflected by the angle between them. The smaller the angle, the more significant the correlation. 
+For example, it shows that year 2015 and year 2016 are all correlated strongly.
+
+The first principal component (Dim1), which accounts for 60.9% of the variance, is strongly associated with the years ascending from 2014 to 2024. This suggests a trend over time where more recent years have higher values on this component.
+The second principal component (Dim2), accounting for 32.2% of the variance, separates earlier years from the latest ones, possibly indicating a change in the pattern of the data over time.
+
+Move on to check Exploratory Factor Analysis (EFA).
+
+## Exploratory Factor Analysis (EFA)
+
+### EFA
+
+```{r}
+fit.pc <- principal(cor, nfactors=5, rotate="varimax")
+fa.diagram(fit.pc)
+```
+###RC1 - "Long-term Trend" if it has significant factor loadings from all years, suggesting it captures a pattern persistent across all years.
+###RC2 - "Recent Change" if it has high loadings for the most recent years, indicating it captures a trend that is more pronounced in recent times.
+###RC3 - "Mid-term Fluctuation" if it captures variance in the middle years of your dataset, suggesting fluctuations or trends that are not present in the earliest or latest years.
+
+### Defining the factors obtained
+
+## Clustering
+
+### Distance matrix
+
+```{r}
+clg_dist <- get_dist(cor, stand = TRUE, method = "euclidean")
+```
+### Kmeans optimal clusters
+
+```{r}
+set.seed(123)
+efa_data <- as.data.frame(fit.pc$scores)
+matstd_data <- scale(cor)
+```
+
+* We scale the data to consider for identifying the optimal number of clusters.
+
+```{r}
+# Perform clustering using K-means
+set.seed(123)  # for reproducibility
+k <- 5  # number of clusters (you can adjust this)
+kmeans_result <- kmeans(cor, centers = k)
+
+# Visualize clustering
+fviz_cluster(kmeans_result, data = cor)
+
+# Get cluster centroids
+centroids <- as.data.frame(kmeans_result$centers)
+
+# Assign individuals to clusters
+cluster_assignments <- kmeans_result$cluster
+
+
+```
+
+### Reducing the existing variables and using factors for further analysis
+
+```{r}
+
+```
+
+
+```{r}
+
+# Calculate total within-cluster sum of squares (WCSS) for different values of k
+wcss <- numeric(10)
+for (i in 1:10) {
+  kmeans_model <- kmeans(cor, centers = i, nstart = 10)
+  wcss[i] <- kmeans_model$tot.withinss
+}
+
+# Plot the elbow curve
+plot(1:10, wcss, type = "b", xlab = "Number of Clusters (k)", ylab = "Within-cluster Sum of Squares (WCSS)",
+     main = "Elbow Method for Optimal k")
+
+```
+```{r
+```
+```{r}
+set.seed(1111)
+km.res <- kmeans(cor, 2, nstart = 25)
+# Visualize
+fviz_cluster(km.res, data = cor,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal())
+
+```
+
+Cluster 1 (red, circle): Includes years from 2014 to 2016. This cluster has a downward trajectory on Dim2, suggesting a particular trend or characteristic was diminishing over these years.
+Cluster 2 (yellow, triangle): Contains only the year 2022. This might indicate that the population characteristics in 2022 were unique compared to other years.
+Cluster 3 (purple, cross): Includes only the year 2023, which, like 2022, may have unique characteristics that separate it from other years.
+Cluster 4 (blue, square): Encompasses years from 2018 to 2021, indicating these years share similar population characteristics.
+Cluster 5 (green, diamond): Isolated with the year 2014, possibly signifying that 2014's population distribution was significantly different from other years.
+
+
+### Confusion Matrix & Accuracy
+
+```{r}
+# Assuming 'data$Age_categories' contains the true age categories from your dataset
+Actual <- factor(data$Age_categories, levels = c("Children", "Youth", "Adults"))
+
+# Assuming 'km.res$cluster' contains the predicted cluster assignments
+Predicted <- factor(ifelse(km.res$cluster == 1, "Children",
+                    ifelse(km.res$cluster == 2, "Youth", "Adults")),
+                    levels = c("Children", "Youth", "Adults"))
+Predicted <- rep(Predicted, length.out = length(Actual))
+
+# Create the confusion matrix
+confusion_mat <- table(Actual, Predicted)
+confusion_mat
+
+```
+
+```{r}
+accuracy <- sum(diag(confusion_mat)) / sum(confusion_mat)
+cat("Accuracy:", round(accuracy, 3), "\n")
+```
+
+###We see that the clustering has classified the colleges with 31.9% accuracy.
+###We can conclude that we cannot classify the unemployment based on the age categories on the data provided.
+
+## Logistic Regression
+
+```{r}
+str(data)
+```
+
+
+### Defining training and testing sets
+
+
+
+```{r}
+
+
+colnames(data)
+# Assuming your dataframe is named 'data'
+data$High_Risk <- ifelse(data$year_2024 >= 10, 1, 0)
+
+# Fit logistic regression model
+logit_model <- glm(High_Risk ~ . - Country_name - Age_group - Age_categories - year_2014 - year_2015 - year_2016 - year_2017 - year_2018 - year_2019 - year_2020 - year_2021 - year_2022 - year_2023 - High_Risk, data = data, family = "binomial")
+
+# Summary of the model
+summary(logit_model)
+```
+
+
+```{r}
+set.seed(12345)
+probabilities <- predict(logit_model, newdata = data, type = "response")
+
+predicted <- ifelse(probabilities > 0.5, "Yes", "No")
+actual <- ifelse(data$High_Risk == 1, "Yes", "No")
+conf_matrix <- table(predicted, actual)
+conf_matrix
+
+```
+
+* The confusion matrix is obtained to test our prediction based on the regression.
+
+```{r}
+# Calculate accuracy
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(paste("Accuracy:", accuracy))
+```
+
+* We can see that our prediction is very accurate (1).
+* We further check the ROC curve.
+
+### ROC and AUC
+
+```{r}
+roc <- roc(data$High_Risk, probabilities)
+auc <- auc(roc)
+auc
+```
+```{r}
+ggroc(roc, color = "blue", legacy.axes = TRUE) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  scale_x_continuous(labels = scales::percent_format()) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = "False Positive Rate", y = "True Positive Rate",
+       title = paste("ROC Curve (AUC = ", round(auc, 2), ")")) +
+  annotate("text", x = 0.5, y = 0.5, label = paste0("AUC = ", round(auc, 2)))
+```
+
+
+The AUC is obtained to be 1 which is excellent and tells us that our prediction works well.
+
+
+Based on the given data, we could classify the age_categories
+o The accuracy of the classification came out to be 93.1%
+o We have used Exploratory Factor Analysis and Clustering for this classification.
+
+ We could also predict High Risk and Low Risk based on the variables provided.
+o Using logistic regression, we predicted the type of college with 1 accuracy.
+o An AUC of 1 for the ROC curve shows good prediction
+
+
