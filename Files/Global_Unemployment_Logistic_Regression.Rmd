@@ -1,0 +1,221 @@
+---
+title: "Logistic_Regression"
+output: html_document
+date: "2024-04-19"
+---
+
+```{r}
+library(ggplot2)
+library(cowplot)
+library(caret)
+library(e1071)
+library(pROC)
+
+attr <- read_csv("C:/Users/mumba/Documents/Global_Unemployment__Dataset.csv")
+atrr
+str(attr)
+```
+
+```{r}
+# Check for NA values in each variable
+sapply(attr, function(x) any(is.na(x)))
+
+#converting Sex  as factor
+attr$Sex <- as.factor(attr$Sex)
+attr$Sex <- ifelse(test=attr$Sex == 'Yes', yes="Male", no="Female") 
+
+```
+
+
+1) Model Development
+```{r}
+## Exploratory Analysis
+xtabs(~ Country_name + Sex, data=attr)
+```
+```{r}
+#Removing 2 observed values of age 144. Outliers
+hist(loan_data$person_age, main = "Histogram of Person Age")
+loan_data$z_score_age <- scale(loan_data$person_age)
+# Define threshold
+threshold <- 3
+
+# Remove outliers based on threshold
+loan_data <- loan_data[abs(loan_data$z_score_age) <= threshold, ]
+
+# Remove the z_score_age column as it's no longer needed
+loan_data$z_score_age <- NULL
+
+# Check the dimensions of the filtered data
+dim(loan_data)
+```
+
+```{r}
+xtabs(~ loan_status + person_age, data=loan_data)
+```
+
+```{r}
+#xtabs(~ loan_status + person_income, data=loan_data)
+```
+
+
+```{r}
+xtabs(~ loan_status + person_emp_length, data=loan_data)
+```
+
+```{r}
+xtabs(~ loan_status + loan_amnt, data=loan_data)
+```
+
+```{r}
+#xtabs(~ loan_status + loan_int_rate, data=loan_data)
+```
+
+```{r}
+xtabs(~ loan_status + loan_percent_income, data=loan_data)
+```
+
+```{r}
+xtabs(~ loan_status + cb_person_cred_hist_length, data=loan_data)
+```
+
+```{r}
+xtabs(~ loan_status + loan_grade, data=loan_data)
+```
+
+```{r}
+xtabs(~ loan_status + cb_person_default_on_file, data=loan_data)
+```
+```{r}
+str(loan_data)
+```
+
+```{r}
+logistic_simple <- glm(loan_status ~ person_age, data=loan_data, family="binomial")
+summary(logistic_simple)
+```
+Identifying if the model is good/bad 
+check for intercept and person_age coefficient 
+check for low AIC score
+check for *** ie significant 
+
+The intercept is the log(odds) a person will receive loan based on age. 
+```{r}
+## The intercept is the log(odds) a female will be unhealthy. This is because
+## female is the first factor in "sex" (the factors are ordered,
+## alphabetically by default,"female", "male")
+## Now let's look at the second coefficient...
+##   sexM        1.2737     0.2725   4.674 2.95e-06 ***
+##
+## sexM is the log(odds ratio) that tells us that if a sample has sex=M, the
+## odds of being unhealthy are, on a log scale, 1.27 times greater than if
+## a sample has sex=F.
+#female.log.odds <- log(25 / 71)
+#female.log.odds
+# Now you know how these are calculated
+#male.log.odds.ratio <- log((112 / 89) / (25/71))
+#male.log.odds.ratio
+```
+
+
+2) Model Acceptance 
+```{r}
+#let's  see what this logistic regression predicts
+predicted.data <- data.frame(probability.of.loan_status=logistic_simple$fitted.values,age=loan_data$person_age)
+predicted.data
+```
+
+
+```{r}
+# We can plot the data
+#ggplot(data=predicted.data ,aes(x=age, y=probability.of.loan_status))+ geom_point(aes(color=age), size=5) + xlab("Age") + ylab("Predicted probability of getting a loan")
+
+xtabs(~ probability.of.loan_status + age, data=predicted.data)
+
+```
+33 observations at age of 21 and probability of loan is 25%
+57 observations at age of 22 and probability of loan is 31%
+94 observations at age of 23 and probability of loan is 38%
+96 observations at age of 24 and probability of loan is 45%
+92 observations at age of 25 and probability of loan is 53%
+
+The highest probability of getting a loan accepted is at the age of 25.  
+
+3) Residual Analysis and Prediction
+```{r}
+logistic <- glm(loan_status ~ ., data=loan_data, family="binomial")
+summary(logistic)
+```
+
+```{r}
+predicted.data <- data.frame(probability.of.ls=logistic$fitted.values,ls=loan_data$loan_status)
+predicted.data <- predicted.data[order(predicted.data$probability.of.ls, decreasing=FALSE),]
+predicted.data$rank <- 1:nrow(predicted.data)
+## Lastly, we can plot the predicted probabilities for each sample having
+## heart disease and color by whether or not they actually had heart disease
+ggplot(data=predicted.data, aes(x=rank, y=probability.of.ls)) +
+geom_point(aes(color=ls), alpha=1, shape=4, stroke=2) +
+xlab("Index") +
+ylab("Predicted probability of getting a loan")
+```
+
+5) Model Accuracy 
+```{r}
+# Confusion matrix
+conf_mat <- table(Actual = loan_data$loan_status, Predicted = ifelse(logistic$fitted.values > 0.5, "Approved", "Not-Approved"))
+print(conf_mat)
+
+# Calculate accuracy
+accuracy <- sum(diag(conf_mat)) / sum(conf_mat)
+print(paste("Accuracy:", accuracy))
+
+# Calculate precision
+precision <- conf_mat["Approved", "Approved"] / sum(conf_mat[, "Approved"])
+print(paste("Precision:", precision))
+
+# Calculate recall
+recall <- conf_mat["Approved", "Approved"] / sum(conf_mat["Approved", ])
+print(paste("Recall:", recall))
+
+# ROC curve
+roc_obj <- roc(loan_data$loan_status, logistic$fitted.values)
+plot(roc_obj, xlab="False Positive Percentage", ylab="True Postive Percentage", legacy.axes=TRUE, col="#377eb8", lwd=4, percent=TRUE, print.auc=TRUE)
+```
+Insights: 
+The model only predicts 18 cases of Approved and 13 cases of not-approved correctly. 
+
+The accuracy of the modelis approximately 7.06%. This indicates that the model's overall predictive accuracy is quite low.
+
+Precision measures the proportion of correctly predicted "Approved" loans out of all predicted "Approved" cases, is 9%, indicating that only a small fraction of cases predicted as "Approved" are actually "Approved".
+
+The recall of the model is approximately 7.38%, indicating that the model correctly identifies only a small portion of "Approved" loans.
+
+The Area Under the Curve (AUC) is a measure of the model's ability to distinguish between "Approved" and "Not-Approved" loans.
+The AUC value of 0.973 indicates that the model has good discriminatory power.
+
+The model has high AUC value, but poor accuracy, precision, and recall suggesting that it may not be suitable for practical use.
+
+
+
+
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

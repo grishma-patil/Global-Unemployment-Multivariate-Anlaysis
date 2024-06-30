@@ -1,0 +1,108 @@
+---
+title: "MVA_Assignment_Factor_Analysis"
+output: html_document
+date: "2024-03-25"
+---
+
+```{r}
+# Factor Analysis
+
+library(psych)
+library(readr)
+Unemployment_Dataset <- read.csv("C:/Users/mumba/Documents/Global_Unemployment__Dataset.csv")
+
+attach(Unemployment_Dataset)
+Unemployment_Dataset[7]
+
+# Identify non-numeric columns
+non_numeric_cols <- sapply(Unemployment_Dataset, function(x) !is.numeric(x))
+
+# Exclude non-numeric columns
+numeric_data <- Unemployment_Dataset[, !non_numeric_cols]
+
+# Perform principal component analysis (PCA)
+fit.pc <- principal(numeric_data, nfactors = 3, rotate = "varimax")
+
+# Summary of the PCA
+summary(fit.pc)
+
+fit.pc
+round(fit.pc$values, 3)
+fit.pc$loadings
+
+
+#Insights -  Higher absolute values of loadings indicate a stronger relationship between the variable and the component. For example, in RC1, both twenty.two and twenty.three have high loadings (0.887 and 0.945 respectively), indicating they are strongly associated with RC1.
+
+# Loadings with more digits
+for (i in c(1,3,2)) { print(fit.pc$loadings[[1,i]])}
+# Communalities
+fit.pc$communality
+# Rotated factor scores, Notice the columns ordering: RC1, RC3, RC2 and RC4
+fit.pc$scores
+# Play with FA utilities
+
+
+#Q. Decide how many Factors are ideal for your dataset?
+fa.parallel(numeric_data) # See factor recommendation
+
+#Parallel analysis suggests that the number of factors =  1  and the number of components =  1 
+
+
+#Q. Show the columns that go into each factor (2 points)
+fa.diagram(fit.pc) # Visualize the relationship
+
+#Q. Perform some visualizations using the factors
+vss(numeric_data) # See Factor recommendations for a simple structure
+fa.plot(fit.pc) # See Correlations within Factors
+
+#Q. Explain the output for your factor model
+#The output for the factor model includes several components such as eigenvalues, communalities, loadings, proportion of variance explained, and factor correlations. Each of these components provides information about the factor structure and how well the variables are explained by the factors.
+# Computing Correlation Matrix
+corrm.emp <- cor(numeric_data)
+corrm.emp
+plot(corrm.emp)
+Unemployment_Dataset_pca <- prcomp(numeric_data, scale=TRUE)
+summary(Unemployment_Dataset_pca)
+plot(Unemployment_Dataset_pca)
+# A table containing eigenvalues and %'s accounted, follows. Eigenvalues are the sdev^2
+(eigen_Unemployment_Dataset <- round(Unemployment_Dataset_pca$sdev^2,3))
+round(fit.pc$values, 3)
+names(eigen_Unemployment_Dataset) <- paste("PC",1:3,sep="")
+eigen_Unemployment_Dataset
+sumlambdas <- sum(eigen_Unemployment_Dataset)
+sumlambdas
+propvar <- round(eigen_Unemployment_Dataset/sumlambdas,2)
+propvar
+cumvar_Unemployment_Dataset <- cumsum(propvar)
+cumvar_Unemployment_Dataset
+matlambdas <- rbind(eigen_Unemployment_Dataset,propvar,cumvar_Unemployment_Dataset)
+matlambdas
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+rownames(matlambdas)
+eigvec.emp <- Unemployment_Dataset_pca$rotation
+print(Unemployment_Dataset_pca)
+# Taking the first four PCs to generate linear combinations for all the variables with four factors
+pcafactors.emp <- eigvec.emp[,1:3]
+pcafactors.emp
+# Multiplying each column of the eigenvector’s matrix by the square-root of the corresponding eigenvalue in order to get the factor loadings
+unrot.fact.emp <- sweep(pcafactors.emp,MARGIN=2,Unemployment_Dataset_pca$sdev[1:3],`*`)
+unrot.fact.emp
+# Computing communalities
+communalities.emp <- rowSums(unrot.fact.emp^2)
+communalities.emp
+# Performing the varimax rotation. The default in the varimax function is norm=TRUE thus, Kaiser normalization is carried out
+rot.fact.emp <- varimax(unrot.fact.emp)
+#View(unrot.fact.emp)
+rot.fact.emp
+# The print method of varimax omits loadings less than abs(0.1). In order to display all the loadings, it is necessary to ask explicitly the contents of the object $loadings
+fact.load.emp <- rot.fact.emp$loadings[1:3,1:3]
+fact.load.emp
+# Computing the rotated factor scores for the 30 European Countries. Notice that signs are reversed for factors F2 (PC2), F3 (PC3) and F4 (PC4)
+scale.emp <- scale(numeric_data)
+scale.emp
+as.matrix(scale.emp)%*%fact.load.emp%*%solve(t(fact.load.emp)%*%fact.load.emp)
+
+
+
+
+```

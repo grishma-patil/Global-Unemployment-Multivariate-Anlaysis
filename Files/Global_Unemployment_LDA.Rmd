@@ -1,0 +1,168 @@
+---
+title: "Assigment_3"
+output: html_document
+---
+
+```{r}
+library(readr)
+
+unemployment <- read_csv("C:/Users/mumba/Documents/Global_Unemployment_Dataset.csv")
+
+str(unemployment)
+
+#dataset <- raw_dataset[,4:7]
+dataset_clean <- na.omit(unemployment)
+indvar_dataset <- dataset_clean[, 5:7]
+
+
+
+#Univariate analysis 1) Finding means of each column 2) Covariance matrix for all columns in the data 3) Mahalanobis distances for each observation:  Inorder to identify outlier or observations that are unusual relative to the overall distribution of the data. 
+
+dataset_cm <- colMeans(indvar_dataset, na.rm = TRUE)
+dataset_cm
+
+dataset_S <- cov(indvar_dataset)
+dataset_S
+
+dataset_d <- apply(indvar_dataset, MARGIN = 1, function(indvar_dataset)t(indvar_dataset - dataset_cm) %*% solve(dataset_S) %*% (indvar_dataset - dataset_cm))
+dataset_d
+
+#Insights: The average mean of 2023 is approximately 6.651183. Average correlation: The average correlation is approximately 25.53948. Covariance indicates strong relationship between them.
+
+
+#Test to find equality of variances between Genders
+
+with(data=unemployment,t.test(Two_Thousand_Twenty_two[Gender=="Male"],Two_Thousand_Twenty_two[Gender=="Female"],var.equal=TRUE))
+with(data=unemployment,t.test(Two_Thousand_Twenty_three[Gender=="Male"],Two_Thousand_Twenty_three[Gender=="Female"],var.equal=TRUE))
+with(data=unemployment,t.test(Two_Thousand_Twenty_four[Gender=="Male"],Two_Thousand_Twenty_four[Gender=="Female"],var.equal=TRUE))
+
+#Across the years 2022, 2023, and 2024, there is no significant difference in unemployment rates between males and females. The t-tests showed p-values greater than 0.05, indicating no statistically significant distinction
+
+
+#Multivariate analysis: Hotelling’s T-squared test/ extension of the univariate t-test to multidimensional data.
+
+library(Hotelling)
+t2testsunemployment <- hotelling.test(Two_Thousand_Twenty_two + Two_Thousand_Twenty_three + Two_Thousand_Twenty_four ~ Gender, data=unemployment)
+# Output of the function hotelling.test is given
+cat("T2 statistic =",t2testsunemployment$stat[[1]],"\n")
+print(t2testsunemployment)
+
+# Hotelling's T-squared test indicates that there is no significant difference in the means of unemployment rates between genders across the years 2022, 2023, and 2024, with a p-value of 0.276. It  is greater than the typical significance level of 0.05, we fail to reject the null hypothesis. This suggests that there is no significant difference in the means of unemployment rates between genders across the specified years.
+
+#var.test(Two_Thousand_Twenty_three[Gender=="Male"],Two_Thousand_Twenty_three[Gender=="Female"])
+attach(unemployment)
+var.test(Two_Thousand_Twenty_three[Gender=="Male"],Two_Thousand_Twenty_two[Gender=="Female"])
+
+
+#Levene’s test–to find if the variance of independent variables differ significantly
+
+matstand <- scale(unemployment[,5:7])
+matstand
+matsurv <- matstand[Gender == "Male",]
+matsurv
+matnosurv <- matstand[Gender == "Female",]
+matnosurv
+dim(matsurv)
+
+
+#Vector containing the median values of each column in the subset of data
+
+vecmediansurv <- apply(matsurv,2,mean)
+vecmediansurv
+
+vecmediannosurv <- apply(matnosurv, 2, median)
+
+#The absolute deviations of each element in the matnosurv Subtracting the median values from the elements of matnosurv and then taking the absolute value of the differences.
+
+matabsdevsurv <- abs(matsurv - matrix(rep(vecmediansurv,nrow(matsurv)),nrow=nrow(matsurv), byrow=TRUE))
+
+matabsdevnosurv <- abs(matnosurv - matrix(rep(vecmediannosurv,nrow(matnosurv)),nrow=nrow(matnosurv), byrow=TRUE))
+
+matabsdevnosurv
+
+matabsdev.all <- rbind(matabsdevsurv,matabsdevnosurv)
+matabsdev.all <- data.frame(Gender, matabsdev.all)
+
+#T-test for each independent variable
+
+t.test(matabsdev.all$Two_Thousand_Twenty_two[Gender=="Male"],Two_Thousand_Twenty_two[Gender=="Female"], alternative="less",var.equal = TRUE)
+
+t.test(matabsdev.all$Two_Thousand_Twenty_three[Gender=="Male"],Two_Thousand_Twenty_three[Gender=="Female"], alternative="less",var.equal = TRUE)
+
+t.test(matabsdev.all$Two_Thousand_Twenty_four[Gender=="Male"],Two_Thousand_Twenty_four[Gender=="Female"], alternative="less",var.equal = TRUE)
+
+#The one-tailed t-tests conducted for the years 2022, 2023, and 2024, comparing the unemployment rates between males and females, all resulted in extremely low p-values (less than 0.000001), indicating a significant difference. The tests were conducted with the alternative hypothesis that the true difference in means is less than 0 (i.e., male unemployment rates are lower than female rates). The confidence intervals for the differences in means were all entirely below 0, further supporting this conclusion.
+
+matstand
+
+matstand.all <- data.frame(Gender, matstand)
+colnames(matstand.all) <- colnames(unemployment[5:7])
+t2testdata <- hotelling.test(Two_Thousand_Twenty_two + Two_Thousand_Twenty_three + Two_Thousand_Twenty_four ~ Gender,unemployment=matstand.all)
+cat("T2 statistic =",t2testdata$stat[[1]],"\n")
+print(t2testdata)
+
+
+
+
+# In the above we standardized using scale function
+matabsdev.all
+
+
+d.all <- data.frame(Gender,sqrt(rowSums(matabsdev.all[,-1]^2)))
+d.all
+colnames(d.all)[2] <- "dij"
+d.all
+head(d.all)
+with(d.all, t.test(dij[Gender=="Male"], dij[Gender=="Female"],var.equal=TRUE, alternative="less"))
+sprintf("d-values for Male: Mean = %2.3f, Variance = %2.3f",mean(d.all$dij[Gender=="Male"]),var(d.all$dij[Gender=="Male"]))
+sprintf("d-values for Female: Mean = %2.3f, Variance = %2.3f",mean(d.all$dij[Gender=="Female"]),var(d.all$dij[Gender=="Female"]))
+
+# Hotelling Test
+
+
+# Leverne test is used to verify Homoscedasticity. It tests if the variance of two samples are # #equal. Levene's test is an inferential statistic used to assess the equality of variances for a #variable calculated for two or more groups.[1] Some common statistical procedures assume that #variances of the populations from which different samples are drawn are equal. Levene's test #assesses this assumption.
+
+library(car)
+leveneTest(Two_Thousand_Twenty_two ~ Gender, data=unemployment)
+#leveneTest() produces a two-sided test
+leveneTest(Two_Thousand_Twenty_three ~ Gender, data=unemployment)
+leveneTest(Two_Thousand_Twenty_four ~ Gender, data=unemployment)
+
+#In all cases, the p-values are greater than 0.05, indicating that there is no significant difference in variances between genders across the specified years. Therefore, the assumption of equal variances holds for conducting further statistical tests
+
+# ANOVA
+summary(aov(Two_Thousand_Twenty_two ~ Gender))
+summary(aov(Two_Thousand_Twenty_three ~ Gender))
+summary(aov(Two_Thousand_Twenty_four ~ Gender))
+
+#for each year: 2022:F value: 0.95, p-value: 0.334 2023:F value: 0.539, p-value: 0.466, 2024: F value: 0.462, p-value: 0.499. In all three years, the p-values are greater than 0.05, indicating that there is no significant difference in mean unemployment rates between genders.
+
+# mahalanobis
+library(stats)
+
+dataset_MD <- mahalanobis(indvar_dataset, dataset_cm, dataset_S)
+dataset_MD
+unemployment$pvalues <- pchisq(dataset_MD, df=3, lower.tail=FALSE)
+unemployment
+
+#These MD values represent the distance of each observation from the centroid of the data in multivariate space. Subsequently, chi-squared p-values have been computed based on these MD values and a degrees of freedom of 3.
+
+# BoxM
+
+library(biotools)
+boxM(unemployment[,5:7],Gender)
+
+#The Box's M-test indicates that there are significant differences in the covariance matrices of the unemployment data across different genders (p < 0.05), suggesting potential variability differences between genders in the dataset.
+
+# MANOVA
+
+numeric_data <- unemployment [,5:7]
+
+manova_result <- manova(as.matrix(numeric_data) ~ Gender, data = unemployment)
+
+summary(manova_result)
+
+#The MANOVA test results indicate that there is no significant difference in the mean vector of the numeric variables (unemployment data) between genders (p > 0.05).
+
+```
+

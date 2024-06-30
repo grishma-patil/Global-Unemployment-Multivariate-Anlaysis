@@ -1,0 +1,394 @@
+---
+title: "MVA_Assignment_4"
+---
+
+```{r}
+library(readr)
+unemployment <- read_csv("C:/Users/mumba/Documents/Global_Unemployment_Dataset.csv")
+str(unemployment)
+attach(unemployment)
+excluded_column <- c(-1,-2,-3,-4)
+result <- cor(unemployment[,excluded_column])
+result
+
+unemployment_pca <- prcomp(unemployment[,excluded_column],scale=TRUE)
+unemployment_pca
+
+summary(unemployment_pca)
+
+#1. Decide how many Principal Components (PCs) you want to keep and why (2 points) 
+#Answer:  The summary of the PCA output indicates that PC1 explains the majority of the variance in the data (99.42%), followed by PC2 (0.55%) and PC3 (0.035%). Together, PC1 and PC2 capture over 99.9% of the variance. This suggests that PC1 primarily represents the main patterns in the unemployment data, while PC2 and PC3 capture smaller, less significant variations. 
+
+(eigen_unemployment <- unemployment_pca$sdev^2)
+
+#Insight: We consider retaining principal components with eigenvalues greater than 1.
+
+names(eigen_unemployment) <- paste("PC",1:3,sep="")
+eigen_unemployment
+sumlambdas <- sum(eigen_unemployment)
+sumlambdas
+propvar <- eigen_unemployment/sumlambdas
+propvar
+cumvar_unemployment <- cumsum(propvar)
+cumvar_unemployment
+matlambdas <- rbind(eigen_unemployment,propvar,cumvar_unemployment)
+rownames(matlambdas) <- c("Eigenvalues","Prop. variance","Cum. prop. variance")
+round(matlambdas,4)
+summary(unemployment_pca)
+
+#2. Explain the variate representation each PCs
+
+unemployment_pca$rotation
+print(unemployment_pca)
+
+#In short, the Principal Component Analysis (PCA) reveals distinct patterns in unemployment across the years 2022, 2023, and 2024: PC1 shows a general trend: negative impact in 2022, mixed impact in 2023, and positive impact in 2024.PC2 captures additional variability not consistent across the years.PC3 reflects a significant negative impact in 2023 and a significant positive impact in 2024, indicating a specific change between these years. Overall, PCA identifies key trends and changes in unemployment over the three years, providing insights into the underlying patterns of variability.
+
+## Sample scores stored in unemployment_pca$x
+unemployment_pca$x
+# Identifying the scores by their survival status
+unemploytyp_pca <- cbind(data.frame(Gender),unemployment_pca$x)
+unemploytyp_pca
+
+
+str(unemploytyp_pca)
+
+# Means of scores for all the PC's classified by Survival status
+tabmeansPC <- aggregate(. ~ Gender, data = unemploytyp_pca, mean)
+tabmeansPC
+tabmeansPC <- tabmeansPC[rev(order(tabmeansPC$Gender)),]
+tabmeansPC
+
+#Mean scores of each principal component for default vs non-default groups.
+
+tabfmeans <- t(tabmeansPC[,-1])
+tabfmeans
+colnames(tabfmeans) <- t(as.vector(tabmeansPC[1]$Gender))
+tabfmeans
+# Standard deviations of scores for all the PC's classified by Survival status
+
+tabsdsPC <- aggregate(unemploytyp_pca[,-1:-4],by=list(Gender=Gender),sd)
+tabfsds <- t(tabsdsPC[,excluded_column])
+colnames(tabfsds) <- t(as.vector(tabsdsPC[1]$Gender))
+tabfsds
+t.test(PC1~unemployment$Gender,data=unemploytyp_pca)
+t.test(PC2~unemployment$Gender,data=unemploytyp_pca)
+t.test(PC3~unemployment$Gender,data=unemploytyp_pca)
+
+
+#The mean PC1 score for females (-0.178) is slightly lower than for males (0.178), but the difference is not statistically significant (p-value = 0.4282). 
+#PC2: The mean PC2 score for females (-0.029) is slightly lower than for males (0.029), but again, the difference is not statistically significant (p-value = 0.08414).
+#PC3: The mean PC3 score for females (-0.0022) is almost equal to that for males (0.0022), and the p-value (0.5998) indicates no significant difference.
+#Similar to PC1 and PC2, there is no strong evidence of a significant difference in PC3 scores between genders.
+
+## F ratio tests
+var.test(PC1~unemployment$Gender,data=unemploytyp_pca)
+var.test(PC2~unemployment$Gender,data=unemploytyp_pca)
+var.test(PC3~unemployment$Gender,data=unemploytyp_pca)
+
+
+# Levene's tests (one-sided)
+library(car)
+(LTPC1 <- leveneTest(PC1~unemployment$Gender,data=unemploytyp_pca))
+(p_PC1_1sided <- LTPC1[[3]][1]/2)
+(LTPC2 <- leveneTest(PC2~unemployment$Gender,data=unemploytyp_pca))
+(p_PC2_1sided=LTPC2[[3]][1]/2)
+(LTPC3 <- leveneTest(PC3~unemployment$Gender,data=unemploytyp_pca))
+(p_PC3_1sided <- LTPC3[[3]][1]/2)
+
+
+# Plotting the scores for the first and second components
+plot(unemploytyp_pca$PC1, unemploytyp_pca$PC2,pch=ifelse(unemploytyp_pca$Gender == "S",1,16),xlab="PC1", ylab="PC2", main="49 unemployment against values for PC1 & PC2")
+abline(h=0)
+abline(v=0)
+legend("bottomleft", legend=c("Male","Female"), pch=c(1,16))
+plot(eigen_unemployment, xlab = "Component number", ylab = "Component variance", type = "l", main = "Scree diagram")
+plot(log(eigen_unemployment), xlab = "Component number",ylab = "log(Component variance)", type="l",main = "Log(eigenvalue) diagram")
+print(summary(unemployment_pca))
+diag(cov(unemployment_pca$x))
+xlim <- range(unemployment_pca$x[,1])
+unemployment_pca$x[,1]
+unemployment_pca$x
+plot(unemployment_pca$x,xlim=xlim,ylim=xlim)
+unemployment_pca$rotation[,1]
+unemployment_pca$rotation
+plot(unemployment[,excluded_column])
+unemployment_pca$x
+plot(unemployment_pca)
+
+#get the original value of the data based on PCA
+center <- unemployment_pca$center
+scale <- unemployment_pca$scale
+new_unemployment <- as.matrix(unemployment[,excluded_column])
+new_unemployment
+drop(scale(new_unemployment,center=center, scale=scale)%*%unemployment_pca$rotation[,1])
+predict(unemployment_pca)[,1]
+
+str(unemployment_pca$x)
+unemployment$Gender <- as.factor(unemployment$Gender)
+out <- lapply(1:3, function(i) {plot(unemployment$Gender, unemployment_pca$x[, i], xlab = paste("PC", i, sep = ""), ylab = "Gender", main = paste("Principal Component", i))})
+pairs(unemployment_pca$x, ylim = c(-6, 4), xlim = c(-6, 4), panel = function(x, y, ...) {
+  text(x, y, labels = unemployment$Gender)})
+
+# Better Ways to Visualize
+
+library(factoextra)
+library(FactoMineR)
+library(ggfortify)
+library(psych)
+library(corrplot)
+library(devtools)
+
+# Correlation
+pairs.panels(unemployment[,excluded_column],
+             gap = 0,
+             bg = c("red", "blue")[unemployment$Gender],
+             pch=21)
+
+pairs.panels(unemployment_pca$x,
+             gap=0,
+             bg = c("red", "blue")[unemployment$Gender],
+             pch=21)
+
+
+fviz_eig(unemployment_pca, addlabels = TRUE)
+fviz_pca_var(unemployment_pca,col.var = "cos2",
+             gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"),
+             repel = TRUE)
+fviz_pca_ind(unemployment_pca, col.ind = "cos2", 
+                  gradient.cols = c("#FFCC00", "#CC9933", "#660033", "#330033"), 
+                  repel = TRUE)
+biplot(unemployment_pca)
+autoplot(unemployment_pca,
+         data = unemployment[,excluded_column],
+         loadings = TRUE,
+         labels = unemployment$Gender)
+
+# Different PCA Method. 
+res.pca <- PCA(unemployment[,5:7], graph = FALSE)
+print(res.pca)
+
+
+# Visualize and Interpret PCA using these functions 
+
+#get_eigenvalue(res.pca): Extract the eigenvalues/variances of principal components
+#fviz_eig(res.pca): Visualize the eigenvalues
+#get_pca_ind(res.pca), get_pca_var(res.pca): Extract the results for individuals and variables, respectively.
+#fviz_pca_ind(res.pca), fviz_pca_var(res.pca): Visualize the results individuals and variables, respectively.
+#fviz_pca_biplot(res.pca): Make a biplot of individuals and variables.
+
+eig.val <- get_eigenvalue(res.pca)
+eig.val
+
+fviz_eig(res.pca, addlabels = TRUE, ylim = c(0, 50))
+
+var <- get_pca_var(res.pca)
+#var$coord: coordinates of variables to create a scatter plot
+#var$cos2: represents the quality of representation for variables on the factor map. It’s calculated as the squared coordinates: var.cos2 = var.coord * var.coord.
+#var$contrib: contains the contributions (in percentage) of the variables to the principal components. 
+#The contribution of a variable (var) to a given principal component is (in percentage) : (var.cos2 * 100) / (total cos2 of the component).
+var
+
+# Coordinates
+head(var$coord)
+# Cos2: quality on the factore map
+head(var$cos2)
+# Contributions to the principal components
+head(var$contrib)
+
+#The plot Below is also known as variable correlation plots. It shows the relationships between all variables. It can be interpreted as follow:
+
+#Positively correlated variables are grouped together.
+#Negatively correlated variables are positioned on opposite sides of the plot origin (opposed quadrants).
+#The distance between variables and the origin measures the quality of the variables on the factor map. 
+#Variables that are away from the origin are well represented on the factor map.
+
+# Correlation circle
+fviz_pca_var(res.pca, col.var = "black")
+
+# Quality of representation
+
+
+corrplot(var$cos2, is.corr=FALSE)
+# Total cos2 of variables on Dim.1 and Dim.2
+#A high cos2 indicates a good representation of the variable on the principal component. 
+#In this case the variable is positioned close to the circumference of the correlation circle.
+#A low cos2 indicates that the variable is not perfectly represented by the PCs. 
+#In this case the variable is close to the center of the circle.
+
+fviz_cos2(res.pca, choice = "var", axes = 1:2)
+fviz_pca_var(res.pca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE # Avoid text overlapping
+             )
+# Change the transparency by cos2 values
+fviz_pca_var(res.pca, alpha.var = "cos2")
+corrplot(var$contrib, is.corr=FALSE)
+# Contributions of variables to PC1
+fviz_contrib(res.pca, choice = "var", axes = 1, top = 10)
+# Contributions of variables to PC2
+fviz_contrib(res.pca, choice = "var", axes = 2, top = 10)
+fviz_pca_var(res.pca, col.var = "contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07")
+             )
+fviz_pca_var(res.pca, alpha.var = "contrib")
+
+
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = unemployment$Gender, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+             )
+
+
+# Description of PC
+
+res.desc <- dimdesc(res.pca, axes = c(1, 2, 3), proba = 0.05)
+
+# Description of dimension 1
+res.desc$Dim.1
+res.desc$Dim.2
+res.desc$Dim.3
+
+
+# Graph of Indiviuals
+ind <- get_pca_ind(res.pca)
+ind
+
+## Principal Component Analysis Results for individuals
+##  ===================================================
+##   Name       Description                       
+## 1 "$coord"   "Coordinates for the individuals" 
+## 2 "$cos2"    "Cos2 for the individuals"        
+## 3 "$contrib" "contributions of the individuals"
+#To get access to the different components, use this:
+
+# Coordinates of individuals
+head(ind$coord)
+# Quality of individuals
+head(ind$cos2)
+# Contributions of individuals
+head(ind$contrib)
+
+fviz_pca_ind(res.pca)
+
+fviz_pca_ind(res.pca, col.ind = "cos2", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping (slow if many points)
+             )
+fviz_pca_ind(res.pca, pointsize = "cos2", 
+             pointshape = 21, fill = "#E7B800",
+             repel = TRUE # Avoid text overlapping (slow if many points)
+             )
+
+fviz_pca_ind(res.pca, col.ind = "cos2", pointsize = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE # Avoid text overlapping (slow if many points)
+             )
+fviz_cos2(res.pca, choice = "ind")
+# Total contribution on PC1 and PC2
+fviz_contrib(res.pca, choice = "ind", axes = 1:2)
+
+# Create a random continuous variable of length 23,
+# Same length as the number of active individuals in the PCA
+set.seed(123)
+my.cont.var <- rnorm(60)
+# Color individuals by the continuous variable
+fviz_pca_ind(res.pca, col.ind = my.cont.var,
+             gradient.cols = c("blue", "yellow", "red"),
+             legend.title = "Cont.Var")
+
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (nbut not "text")
+             col.ind = unemployment$Gender, # color by groups
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, # Concentration ellipses
+             legend.title = "Groups"
+             )
+
+fviz_pca_ind(res.pca, geom.ind = "point", col.ind = unemployment$Gender, 
+             palette = c("#00AFBB", "#E7B800", "#FC4E07"),
+             addEllipses = TRUE, ellipse.type = "confidence",
+             legend.title = "Groups"
+             )
+fviz_pca_ind(res.pca,
+             label = "none", # hide individual labels
+             habillage = unemployment$Gender, # color by groups
+             addEllipses = TRUE, # Concentration ellipses
+             palette = "jco"
+             )
+fviz_pca_var(res.pca, geom.var = c("point", "text"))
+# Show individuals text labels only
+fviz_pca_ind(res.pca, geom.ind =  "text")
+# Change the size of arrows an labels
+fviz_pca_var(res.pca, arrowsize = 1, labelsize = 5, 
+             repel = TRUE)
+# Change points size, shape and fill color
+# Change labelsize
+fviz_pca_ind(res.pca, 
+             pointsize = 3, pointshape = 21, fill = "lightblue",
+             labelsize = 5, repel = TRUE)
+
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (but not "text")
+             group.ind = unemployment$Gender, # color by groups
+             legend.title = "Groups",
+             mean.point = FALSE)
+fviz_pca_ind(res.pca,
+             geom.ind = "point", # show points only (but not "text")
+             group.ind = unemployment$Gender, # color by groups
+             legend.title = "Groups",
+             mean.point = TRUE)
+fviz_pca_var(res.pca, axes.linetype = "blank")
+
+
+
+ind.p <- fviz_pca_ind(res.pca, geom = "point", col.ind = unemployment$Gender)
+ggpubr::ggpar(ind.p,
+              title = "Principal Component Analysis",
+              subtitle = "Iris data set",
+              caption = "Source: factoextra",
+              xlab = "PC1", ylab = "PC2",
+              legend.title = "Survivorship", legend.position = "top",
+              ggtheme = theme_gray(), palette = "jco"
+              )
+
+
+fviz_pca_biplot(res.pca, 
+                col.ind = unemployment$Gender, palette = "jco", 
+                addEllipses = TRUE, label = "var",
+                col.var = "black", repel = TRUE,
+                legend.title = "Gender") 
+
+fviz_pca_biplot(res.pca, 
+                # Fill individuals by groups
+                geom.ind = "point",
+                pointshape = 21,
+                pointsize = 2.5,
+                fill.ind = unemployment$Gender,
+                col.ind = "black",
+                # Color variable by groups
+                legend.title = list(fill = "Gender", color = "Clusters"),
+                repel = TRUE        # Avoid label overplotting
+             )+
+  ggpubr::fill_palette("jco")+      # Indiviual fill color
+  ggpubr::color_palette("npg")      # Variable colors
+
+fviz_pca_biplot(res.pca, 
+                # Individuals
+                geom.ind = "point",
+                fill.ind = unemployment$Gender, col.ind = "black",
+                pointshape = 21, pointsize = 2,
+                palette = "jco",
+                addEllipses = TRUE,
+                # Variables
+                alpha.var ="contrib", col.var = "contrib",
+                gradient.cols = "RdYlBu",
+                
+                legend.title = list(fill = "Gender", color = "Contrib",
+                                    alpha = "Contrib")
+                )
+
+
+```

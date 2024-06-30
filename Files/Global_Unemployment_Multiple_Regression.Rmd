@@ -1,0 +1,120 @@
+---
+title: "Grishma_Assignment_MultipleRegression"
+date: "2024-04-09"
+output: html_document
+---
+
+```{r}
+library(readr)
+attr <- read_csv("C:/Users/mumba/Documents/Global_Unemployment__Dataset.csv")
+str(attr)
+
+fit <- lm(tw~tt + tf, data = attr)
+#show the results
+summary(fit)
+#Summary has three sections. Section1: How well does the model fit the data. Section2: Is the hypothesis supported?. Section3: How well does data fit the model .
+
+#Based on the output of the linear regression model:
+
+#Model Fit:
+#The model explains a significant portion of the variance in the response variable tw, as indicated by the high R-squared value of 0.9783. This suggests that the model fits the data very well.
+#Hypothesis Testing:
+#The coefficients for predictors tt and tf are both statistically significant.
+#Predictor tt has a positive coefficient estimate of 1.65327, indicating that, on average, a one-unit increase in tt is associated with an increase of approximately 1.65327 units in the response variable tw.
+#Predictor tf has a negative coefficient estimate of -0.58368, although it is not statistically significant at the conventional level (p-value = 0.172149).
+#Model Evaluation: The residuals (the differences between observed and predicted values) have a mean close to zero and are approximately normally distributed, as indicated by the summary statistics and the normality assumption.The residual standard error, which measures the average deviation of the observed values from the fitted values, is 0.7865.The F-statistic tests the overall significance of the model, and its extremely low p-value (< 2.2e-16) suggests that at least one of the predictors (tt or tf) has a non-zero effect on the response variable.
+
+# Useful Helper Functions
+coefficients(fit)
+library(GGally)
+ggpairs(data=attr, title="Unemployment Dataset")
+confint(fit,level=0.95)
+fitted(fit)
+residuals(fit)
+#Anova Table
+anova(fit)
+vcov(fit)
+cov2cor(vcov(fit))
+temp <- influence.measures(fit)
+temp
+plot(fit)
+
+# Assessing Outliers
+library(car)
+outlierTest(fit)
+leveragePlots(fit) # leverage plots
+# Influential Observations
+# added variable plots
+avPlots(fit)
+# Cook's D plot
+# identify D values > 4/(n-k-1)
+cutoff <- 4/((nrow(attr)-length(fit$coefficients)-2))
+plot(fit, which=4, cook.levels=cutoff)
+# Influence Plot
+influencePlot(fit, id.method="identify", main="Influence Plot", sub="Circle size is proportial to Cook's Distance" )
+# Normality of Residuals
+stud_res <- rstudent(fit)  # Get studentized residuals
+# qq plot for studentized resid
+qqPlot(stud_res, main = "QQ Plot of Studentized Residuals")
+
+# distribution of studentized residuals
+library(MASS)
+sresid <- studres(fit)
+hist(sresid, freq=FALSE,
+     main="Distribution of Studentized Residuals")
+xfit<-seq(min(sresid),max(sresid),length=40)
+yfit<-dnorm(xfit)
+plot(xfit, yfit, type="l", col="blue", lwd=2, ylab="Density", xlab="Studentized Residuals")  
+lines(xfit, yfit)
+#Non-constant Error Variance
+# Evaluate homoscedasticity
+# non-constant error variance test
+ncvTest(fit)
+# plot studentized residuals vs. fitted values
+spreadLevelPlot(fit)
+#Multi-collinearity
+# Evaluate Collinearity
+vif(fit) # variance inflation factors
+sqrt(vif(fit)) > 2 # problem?
+#Nonlinearity
+# component + residual plot
+crPlots(fit)
+
+#Non-independence of Errors
+# Test for Autocorrelated Errors
+durbinWatsonTest(fit)
+
+#Interpretation from Durbin Watson Test:
+#The Durbin-Watson statistic is calculated to be approximately 1.329, and the associated p-value is 0.008. This indicates evidence of positive autocorrelation in the residuals of the regression model
+
+# Global test of model assumptions
+library(gvlma)
+gvmodel <- gvlma(fit)
+summary(gvmodel)
+fit
+summary(fit)
+fit1 <- fit
+fit2 <- lm(tw~tt + tf, data = attr)
+# compare models
+anova(fit1, fit2)
+step <- stepAIC(fit, direction="both")
+step$anova # display results
+library(leaps)
+leaps<-regsubsets(tw~tt + tf,data=attr,nbest=10)
+# view results
+plot(leaps)
+plot(leaps,scale="r2")
+plot(leaps,scale="bic")
+summary(leaps)
+library(relaimpo)
+calc.relimp(fit,type=c("lmg","last","first","pratt"),
+            rela=TRUE)
+# Bootstrap Measures of Relative Importance (1000 samples)
+boot <- boot.relimp(fit, b = 100, type = c("lmg",
+                                            "last", "first", "pratt"), rank = TRUE,
+                    diff = TRUE, rela = TRUE)
+booteval.relimp(boot) # print result
+
+#Prediction: The analysis reveals that the model, comprising predictors years twenty-three and twenty-four, explains a substantial portion (approximately 97.83%) of the variance in the response variable twenty-two
+```
+
