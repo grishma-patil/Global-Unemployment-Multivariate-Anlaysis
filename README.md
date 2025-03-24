@@ -38,5 +38,5 @@ Due to the presence of outliers and varying economic conditions, two analytical 
 ## **File Dictionary**
 * Global_Unemployment_Report.pdf – Detailed report on findings, hypotheses, and results.
 * Global_Unemployment_Dataset.csv – Dataset used for analysis.
-* Global_Unemployment_Analysis.ipynb – Jupyter Notebook with Python code for data processing, modeling, and visualization.
+* Global_Unemployment_Analysis.rmd – Rmd file contains the R code for the complete analysis performed, the flow of thought process, and inferences mentioned after each step.
 * Global_Unemployment_Analysis.html – HTML output file showcasing results, visuals, and inferences.
