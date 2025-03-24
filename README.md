@@ -14,7 +14,7 @@ Yearly Unemployment Rate – Percentage of unemployed individuals per country
 Total Unemployment Rate – Aggregate unemployment for all years
 High-Risk Category – Binary classification of high/low unemployment risk
 
-**Questions and Hypothesis**
+## **Questions and Hypothesis**
 Questions
 1. Can we classify if a country falls under a high-risk unemployment category?
 2. Can we predict unemployment risk based on historical data trends?
