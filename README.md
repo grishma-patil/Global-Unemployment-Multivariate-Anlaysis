@@ -2,12 +2,12 @@
 ## **Dataset**
 
 **Source and Editing**
-The dataset contains global unemployment trends collected over a span of 10 years (2014-2024).
-It includes various demographics such as age groups, gender, and country-wise unemployment rates.
-The dataset consists of X columns and Y rows with a focus on analyzing patterns, classifying trends, and predicting unemployment risks.
+* The dataset contains global unemployment trends collected over a span of 10 years (2014-2024).
+* It includes various demographics such as age groups, gender, and country-wise unemployment rates.
+* The dataset consists of X columns and Y rows with a focus on analyzing patterns, classifying trends, and predicting unemployment risks.
 
 **Data Dictionary**
-Country Name – Name of the country
+* Country Name – Name of the country
 Sex – Gender classification (Male/Female)
 Age Group – Categorized into under 15, 15-24, 25-54, 55+ years
 Yearly Unemployment Rate – Percentage of unemployed individuals per country
